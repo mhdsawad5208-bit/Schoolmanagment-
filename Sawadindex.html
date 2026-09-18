@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>School Management System</title>
+
+<!-- Firebase Standard (Compat) Scripts -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--blue:#1768e8;--deep:#11145f;--panel:#24247b;--light:#f4f7fc}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7fc;color:#172033;min-height:100vh}
+
+/* Large & Clear Topbar */
+.topbar{margin:0;height:84px;background:linear-gradient(135deg,#1646b8,#1875ef);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:14px}
+.hamburger{background:rgba(255,255,255,0.22);border:0;color:#fff;font-size:34px;cursor:pointer;width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;transition:background 0.2s,transform 0.1s}
+.hamburger:active{background:rgba(255,255,255,0.4);transform:scale(0.95)}
+.school-logo{width:52px;height:52px;background:#fff;color:#173b9c;border-radius:10px;display:grid;place-items:center;font-size:28px}
+.school-name{font-size:21px;font-weight:800;line-height:1.2}
+.school-sub{font-size:13px;opacity:.9}
+
+/* Wider Sidebar Drawer & Big Menu Tiles */
+#sidebar{position:fixed;top:0;bottom:0;left:-360px;width:320px;background:linear-gradient(#10145e,#171a76);padding:18px 16px;z-index:9999;overflow-y:auto;box-shadow:6px 0 25px rgba(0,0,0,0.5);transition:left 0.25s ease-out}
+body.sidebar-open #sidebar{left:0 !important}
+#sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9998}
+body.sidebar-open #sidebarOverlay{display:block !important}
+
+.sidebar-header{display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:16px;font-weight:bold;letter-spacing:.5px;padding-bottom:12px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.2)}
+.close-btn{background:rgba(255,255,255,0.15);border:0;color:#fff;font-size:24px;width:42px;height:42px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.side-section{margin-bottom:16px;background:#202377;border:1px solid rgba(255,255,255,0.18);border-radius:12px;padding:8px}
+.side-title{padding:10px 12px;background:#303285;color:#fff;font-weight:bold;font-size:13px;border-radius:8px;margin-bottom:8px}
+
+.menu-tile{width:calc(50% - 6px);min-height:92px;margin:4px 2px;background:linear-gradient(145deg,#2574ed,#1762dc);border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:26px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;cursor:pointer;padding:8px 4px;transition:transform 0.1s,background 0.2s}
+.menu-tile small{font-size:13px;font-weight:600}
+.menu-tile:active,.menu-tile:hover{background:linear-gradient(145deg,#00bf55,#04a844);transform:scale(0.97)}
+
+/* Main Layout */
+main{max-width:1100px;margin:auto;padding:16px}
+.page{display:none}
+.page.active{display:block}
+.card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.06)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label{font-weight:bold;font-size:14px}
+input,select,textarea{width:100%;padding:11px;margin-top:5px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}
+textarea{min-height:85px}
+button{border:0;border-radius:8px;padding:11px 16px;background:#1457d9;color:#fff;cursor:pointer;font-size:14px;font-weight:bold}
+button.secondary{background:#64748b}
+button.danger{background:#dc2626}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;background:#fff;margin-top:12px}
+th,td{padding:11px;border:1px solid #e2e8f0;text-align:left;font-size:13.5px}
+th{background:#eef4ff}
+.table-wrap{overflow-x:auto}
+
+/* Dashboard UI */
+.welcome{background:linear-gradient(135deg,#183caa,#2579ee);color:#fff;border-radius:14px;padding:20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.welcome h1{margin:0 0 5px;font-size:22px}
+.welcome p{margin:0;opacity:.85;font-size:14px}
+.welcome button{background:#fff;color:#1745ad}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.dash-card{background:#fff;border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:5px solid var(--blue)}
+.dash-icon{width:48px;height:48px;border-radius:10px;background:#eaf1ff;display:grid;place-items:center;font-size:24px}
+.dash-card b{display:block;color:#596579;font-size:13px}
+.dash-card strong{display:block;font-size:24px;color:#15245d;margin-top:2px}
+
+.quick-panel{background:#fff;border-radius:14px;padding:0 16px 16px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.panel-title{font-weight:bold;color:#fff;background:#24277c;margin:0 -16px 14px;padding:12px 16px;border-radius:14px 14px 0 0;font-size:14px}
+.quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.quick-grid button{min-height:80px;background:linear-gradient(145deg,#2675ec,#1762dc);font-size:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.quick-grid button span{font-size:12px;font-weight:600}
+
+/* Cards & Modals */
+.fee-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.fee-card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.fee-number{font-size:24px;font-weight:bold;color:#1457d9;margin-top:4px}
+.photo-preview{width:95px;height:115px;border:1px dashed #94a3b8;border-radius:8px;object-fit:cover;display:block;margin-top:8px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;padding:14px;overflow:auto}
+.modal.show{display:block}
+.modal-box{max-width:620px;margin:20px auto;background:#fff;border-radius:14px;padding:20px}
+.profile-photo{width:115px;height:140px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1}
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.profile-item{padding:9px;background:#f8fafc;border-radius:6px}
+.profile-item b{display:block;font-size:11px;color:#64748b;margin-bottom:2px}
+.progress-report{background:#fff;padding:18px;margin-top:14px;border:1px solid #ddd}
+.school-title{text-align:center;font-size:20px;font-weight:bold}
+.student-photo{width:90px;height:110px;object-fit:cover;float:right;border:1px solid #aaa}
+.signatures{display:flex;justify-content:space-between;margin-top:45px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <button class="hamburger" type="button" onclick="toggleSidebar()">☰</button>
+    <div class="school-logo">🏫</div>
+    <div>
+      <div class="school-name">School Management</div>
+      <div class="school-sub">Academic Year 2026 - 2027</div>
+    </div>
+  </div>
+</header>
+
+<div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <strong>PORTAL MENU</strong>
+    <button class="close-btn" type="button" onclick="toggleSidebar()">✕</button>
+  </div>
+
+  <div class="side-section">
+    <div class="side-title">🎓 STUDENT MANAGEMENT</div>
+    <button class="menu-tile" onclick="showPage('dashboard')">⌂<small>Home</small></button>
+    <button class="menu-tile" onclick="showPage('admission')">＋<small>Admission</small></button>
+    <button class="menu-tile" onclick="showPage('students')">⌕<small>Search</small></button>
+    <button class="menu-tile" onclick="showPage('classes')">⚙<small>Classes</small></button>
+  </div>
+
+  <div class="side-section">
+    <div class="side-title">📚 ACADEMICS</div>
+    <button class="menu-tile" onclick="showPage('marks')">✎<small>Mark Entry</small></button>
+    <button class="menu-tile" onclick="showPage('marklist')">☷<small>Mark List</small></button>
+    <button class="menu-tile" onclick="showPage('progress')">▣<small>Progress Card</small></button>
+  </div>
+
+  <div class="side-section">
+    <div class="side-title">💰 FINANCE & ACCOUNTS</div>
+    <button class="menu-tile" onclick="showPage('fees')">₹<small>Fee Collect</small></button>
+    <button class="menu-tile" onclick="showPage('feestructure')">▤<small>Fee Structure</small></button>
+    <button class="menu-tile" onclick="showPage('todaycollection')">📅<small>Today Logs</small></button>
+  </div>
+</nav>
+
+<main>
+
+<section id="dashboard" class="page active">
+  <div class="welcome">
+    <div><h1>School Dashboard</h1><p>Active Academic Portal</p></div>
+    <button onclick="showPage('admission')">＋ New Admission</button>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dash-card"><div class="dash-icon">👨‍🎓</div><div><b>Total Students</b><strong id="dashStudents">0</strong></div></div>
+    <div class="dash-card"><div class="dash-icon">📚</div><div><b>Classes</b><strong id="dashClasses">0</strong></div></div>
+    <div class="dash-card"><div class="dash-icon">📝</div><div><b>Marks Entered</b><strong id="dashMarks">0</strong></div></div>
+    <div class="dash-card"><div class="dash-icon">💰</div><div><b>Today Fees</b><strong id="dashTodayFees">₹0</strong></div></div>
+  </div>
+
+  <div class="quick-panel">
+    <div class="panel-title">STUDENT MANAGEMENT</div>
+    <div class="quick-grid">
+      <button onclick="showPage('admission')">＋<span>Admission</span></button>
+      <button onclick="showPage('students')">👥<span>Search</span></button>
+      <button onclick="showPage('classes')">⚙<span>Class & Div</span></button>
+      <button onclick="showPage('progress')">▣<span>Report</span></button>
+    </div>
+  </div>
+
+  <div class="quick-panel">
+    <div class="panel-title">FINANCE & ACCOUNTS</div>
+    <div class="quick-grid">
+      <button onclick="showPage('feestructure')">▤<span>Structure</span></button>
+      <button onclick="showPage('fees')">₹<span>Collect</span></button>
+      <button onclick="showPage('todaycollection')">📅<span>Today Log</span></button>
+      <button onclick="showPage('marks')">📝<span>Marks</span></button>
+    </div>
+  </div>
+</section>
+
+<section id="admission" class="page">
+  <div class="card">
+    <h2 id="formTitle">New Admission</h2>
+    <form id="studentForm">
+      <input type="hidden" id="editId">
+      <div class="grid">
+        <div><label>Admission No *</label><input id="admissionNo" required></div>
+        <div><label>Student Name *</label><input id="studentName" required></div>
+        <div><label>Gender</label><select id="gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+        <div><label>Date of Birth</label><input id="dob" type="date"></div>
+        <div><label>Class *</label><input id="studentClass" placeholder="e.g. 10" required></div>
+        <div><label>Division</label><input id="division" placeholder="e.g. A"></div>
+        <div><label>Admission Date</label><input id="admissionDate" type="date"></div>
+        <div><label>Parent/Guardian Name</label><input id="parentName"></div>
+        <div><label>Mobile Number</label><input id="phone" inputmode="numeric"></div>
+        <div><label>Parent Email</label><input id="email" type="email"></div>
+        <div><label>Religion</label><input id="religion"></div>
+        <div><label>Blood Group</label><input id="bloodGroup"></div>
+      </div>
+      <div style="margin-top:12px"><label>Address</label><textarea id="address"></textarea></div>
+      <div style="margin-top:12px"><label>Student Photo</label><input id="photo" type="file" accept="image/*"><img id="photoPreview" class="photo-preview" alt="Photo preview"></div>
+      <div class="actions"><button type="submit">💾 Save Student</button><button type="button" class="secondary" onclick="resetForm()">Clear</button></div>
+      <div id="status"></div>
+    </form>
+  </div>
+</section>
+
+<section id="students" class="page">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <h2>Student Database (<span id="totalStudentsCount">0</span>)</h2>
+      <button onclick="loadStudents()">↻ Refresh Students</button>
+    </div>
+    <input id="search" placeholder="Search by admission no, name or class..." oninput="renderStudents()" style="margin-top:10px">
+    <div class="table-wrap" style="margin-top:12px">
+      <table><thead><tr><th>Admission No</th><th>Name</th><th>Class</th><th>Division</th><th>Mobile</th><th>Actions</th></tr></thead>
+      <tbody id="studentRows"><tr><td colspan="6">Loading students from database...</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section id="marks" class="page">
+  <div class="card">
+    <h2>📝 Mark Entry</h2>
+    <div class="grid">
+      <div><label>Academic Year</label><input id="markYear" value="2026-27"></div>
+      <div><label>Exam</label><select id="markExam"><option>First Term</option><option>Second Term</option><option>Annual</option><option>Unit Test</option><option>Other</option></select></div>
+      <div><label>Class</label><input id="markClass" placeholder="e.g. 10"></div>
+      <div><label>Division</label><input id="markDivision" placeholder="e.g. A"></div>
+      <div><label>Admission No</label><input id="markAdmissionNo" placeholder="e.g. 1001"></div>
+      <div><label>Student Name</label><input id="markStudentName" readonly></div>
+      <div><label>Subject</label><input id="markSubject" placeholder="e.g. English"></div>
+      <div><label>Maximum Mark</label><input id="maxMark" type="number" min="0" value="100"></div>
+      <div><label>Mark Obtained</label><input id="obtainedMark" type="number" min="0" step="0.01"></div>
+    </div>
+    <div class="actions">
+      <button type="button" onclick="findMarkStudent()">Find Student</button>
+      <button type="button" onclick="saveMark()">💾 Save Mark</button>
+      <button type="button" class="secondary" onclick="clearMarkForm()">Clear</button>
+    </div>
+    <div id="markStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Saved Marks</h3>
+    <div class="table-wrap"><table><thead><tr><th>Student</th><th>Exam</th><th>Subject</th><th>Mark</th><th>%</th><th>Action</th></tr></thead><tbody id="markRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="classes" class="page">
+  <div class="card">
+    <h2>📚 Class & Division</h2>
+    <div class="grid">
+      <div><label>Class *</label><input id="className" placeholder="e.g. 10"></div>
+      <div><label>Division *</label><input id="divisionName" placeholder="e.g. A"></div>
+      <div><label>Class Teacher</label><input id="classTeacher" placeholder="Optional"></div>
+    </div>
+    <div class="actions">
+      <button type="button" onclick="saveClassDivision()">💾 Add Class & Division</button>
+      <button type="button" class="secondary" onclick="loadClassDivisions()">↻ Refresh</button>
+    </div>
+    <div id="classStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Saved Classes & Divisions</h3>
+    <div class="table-wrap"><table><thead><tr><th>Class</th><th>Division</th><th>Teacher</th><th>Action</th></tr></thead>
+    <tbody id="classRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="feestructure" class="page">
+  <div class="card">
+    <h2>💰 Fee Structure</h2>
+    <div class="grid">
+      <div><label>Academic Year</label><input id="feeYear" value="2026-27"></div>
+      <div><label>Class *</label><input id="feeClass" placeholder="e.g. 10"></div>
+      <div><label>Admission Fee</label><input id="admissionFee" type="number" min="0" value="0"></div>
+      <div><label>Tuition Fee</label><input id="tuitionFee" type="number" min="0" value="0"></div>
+      <div><label>Term Fee</label><input id="termFee" type="number" min="0" value="0"></div>
+      <div><label>Exam Fee</label><input id="examFee" type="number" min="0" value="0"></div>
+      <div><label>Other Fee</label><input id="otherFee" type="number" min="0" value="0"></div>
+    </div>
+    <div class="actions"><button type="button" onclick="saveFeeStructure()">💾 Save Fee Structure</button></div>
+    <div id="feeStructureStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Class-wise Fee Structure</h3>
+    <div class="table-wrap"><table><thead><tr><th>Year</th><th>Class</th><th>Admission</th><th>Tuition</th><th>Term</th><th>Exam</th><th>Other</th><th>Total</th><th>Action</th></tr></thead>
+    <tbody id="feeStructureRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="fees" class="page">
+  <div class="card">
+    <h2>💳 Fee Collection</h2>
+    <div class="grid">
+      <div><label>Academic Year</label><input id="collectionYear" value="2026-27"></div>
+      <div><label>Admission No *</label><input id="collectionAdmissionNo" placeholder="e.g. 1001"></div>
+      <div><label>Student Name</label><input id="collectionStudentName" readonly></div>
+      <div><label>Class</label><input id="collectionClass" readonly></div>
+      <div><label>Fee Type</label><select id="collectionType"><option>Admission Fee</option><option>Tuition Fee</option><option>Term Fee</option><option>Exam Fee</option><option>Other Fee</option><option>Monthly Fee</option></select></div>
+      <div><label>Amount *</label><input id="collectionAmount" type="number" min="0" step="0.01"></div>
+      <div><label>Payment Mode</label><select id="paymentMode"><option>Cash</option><option>Bank</option><option>UPI</option><option>Other</option></select></div>
+      <div><label>Receipt No</label><input id="receiptNo"></div>
+      <div><label>Date</label><input id="collectionDate" type="date"></div>
+    </div>
+    <div class="actions">
+      <button type="button" onclick="findCollectionStudent()">Find Student</button>
+      <button type="button" onclick="saveFeeCollection()">💾 Collect Fee</button>
+    </div>
+    <div id="collectionStatus"></div>
+  </div>
+  <div class="card">
+    <h3>Recent Fee Collections</h3>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Receipt</th><th>Admission No</th><th>Student</th><th>Fee Type</th><th>Amount</th><th>Mode</th></tr></thead>
+    <tbody id="feeCollectionRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="todaycollection" class="page">
+  <div class="card">
+    <h2>📅 Today's Collection</h2>
+    <div class="fee-summary">
+      <div class="fee-card"><div>Total Collection</div><div id="todayTotal" class="fee-number">₹0.00</div></div>
+      <div class="fee-card"><div>No. of Receipts</div><div id="todayReceipts" class="fee-number">0</div></div>
+      <div class="fee-card"><div>Cash</div><div id="todayCash" class="fee-number">₹0.00</div></div>
+      <div class="fee-card"><div>Bank / UPI</div><div id="todayDigital" class="fee-number">₹0.00</div></div>
+    </div>
+    <div class="actions"><button type="button" onclick="loadTodayCollection()">↻ Refresh</button></div>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Receipt</th><th>Admission No</th><th>Student</th><th>Fee Type</th><th>Amount</th><th>Mode</th></tr></thead>
+    <tbody id="todayCollectionRows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="marklist" class="page">
+  <div class="card">
+    <h2>Mark List</h2>
+    <div class="grid">
+      <div>
+        <label>Academic Year</label>
+        <select id="mlYear"><option value="">Select Academic Year</option><option>2026-27</option><option>2027-28</option><option>2028-29</option></select>
+      </div>
+      <div>
+        <label>Exam</label>
+        <select id="mlExam"><option value="">Select Exam</option><option>First Term</option><option>Second Term</option><option>Annual</option><option>Unit Test</option></select>
+      </div>
+      <div>
+        <label>Admission No</label>
+        <select id="mlAdmissionNo"><option value="">Select Admission No</option></select>
+      </div>
+    </div>
+    <div class="actions"><button onclick="loadMarkList()">View Mark List</button></div>
+    <div id="markListResult"></div>
+  </div>
+</section>
+
+<section id="progress" class="page">
+  <div class="card">
+    <h2>Progress Report</h2>
+    <div class="grid">
+      <div>
+        <label>Academic Year</label>
+        <select id="prYear"><option value="">Select Academic Year</option><option>2026-27</option><option>2027-28</option><option>2028-29</option></select>
+      </div>
+      <div>
+        <label>Exam</label>
+        <select id="prExam"><option value="">Select Exam</option><option>First Term</option><option>Second Term</option><option>Annual</option><option>Unit Test</option></select>
+      </div>
+      <div>
+        <label>Admission No</label>
+        <select id="prAdmissionNo"><option value="">Select Admission No</option></select>
+      </div>
+    </div>
+    <div class="actions"><button onclick="loadProgressReport()">Generate Report</button></div>
+    <div id="progressResult"></div>
+  </div>
+</section>
+
+</main>
+
+<div id="profileModal" class="modal" onclick="if(event.target===this)closeProfile()">
+  <div class="modal-box">
+    <div class="actions" style="justify-content:space-between;margin-top:0">
+      <h2 style="margin:0">Student Profile</h2>
+      <button class="secondary" onclick="closeProfile()">Close</button>
+    </div>
+    <div id="profileContent" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<script>
+// Sidebar Toggle
+function toggleSidebar(){
+  document.body.classList.toggle("sidebar-open");
+}
+
+function showPage(id){
+  document.body.classList.remove("sidebar-open");
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const target = document.getElementById(id);
+  if(target) target.classList.add("active");
+
+  if(id === "students") loadStudents();
+  if(id === "classes") loadClassDivisions();
+  if(id === "feestructure") loadFeeStructures();
+  if(id === "fees"){ loadFeeCollections(); document.getElementById("collectionDate").value = todayISO(); }
+  if(id === "todaycollection") loadTodayCollection();
+  if(id === "dashboard") refreshDashboardCounts();
+}
+
+// Helpers
+function val(id){ return (document.getElementById(id)?.value || "").trim(); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function esc(v){ return String(v ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+// Firebase Initialization
+const firebaseConfig = {
+  apiKey: "AIzaSyDYYxKbXW4IyZNd6N1maqZ14Vx30CTOcxQ",
+  authDomain: "school-management-ddce3.firebaseapp.com",
+  projectId: "school-management-ddce3",
+  storageBucket: "school-management-ddce3.firebasestorage.app",
+  messagingSenderId: "57458349615",
+  appId: "1:57458349615:web:81044dd4d32bc6dfee98da"
+};
+
+let db = null;
+let studentsRef, marksRef, classesRef, feeStructuresRef, feeCollectionsRef;
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  studentsRef = db.collection("students");
+  marksRef = db.collection("marks");
+  classesRef = db.collection("classes");
+  feeStructuresRef = db.collection("feeStructures");
+  feeCollectionsRef = db.collection("feeCollections");
+} catch(e) {
+  console.error("Firebase initialization failed:", e);
+}
+
+let students = [];
+let marks = [];
+let photoData = "";
+
+document.getElementById("photo").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if(!file){ photoData = ""; return; }
+  const reader = new FileReader();
+  reader.onload = () => { photoData = reader.result; document.getElementById("photoPreview").src = photoData; };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById("studentForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const status = document.getElementById("status");
+  status.textContent = "Saving...";
+  const data = {
+    admissionNo: val("admissionNo"), name: val("studentName"), gender: val("gender"),
+    dob: val("dob"), studentClass: val("studentClass"), division: val("division"),
+    admissionDate: val("admissionDate"), parentName: val("parentName"), phone: val("phone"),
+    email: val("email"), religion: val("religion"), bloodGroup: val("bloodGroup"),
+    address: val("address"), photo: photoData || "", updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try{
+    const editId = val("editId");
+    if(editId) await studentsRef.doc(editId).update(data);
+    else await studentsRef.add({...data, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    status.textContent = "✅ Student saved successfully.";
+    resetForm();
+    await loadStudents();
+    refreshDashboardCounts();
+  }catch(err){
+    status.textContent = "❌ Error: " + err.message;
+  }
+});
+
+function resetForm(){
+  document.getElementById("studentForm").reset();
+  document.getElementById("editId").value = "";
+  document.getElementById("formTitle").textContent = "New Admission";
+  photoData = "";
+  document.getElementById("photoPreview").removeAttribute("src");
+}
+
+async function loadStudents(){
+  const rowBox = document.getElementById("studentRows");
+  rowBox.innerHTML = `<tr><td colspan="6">Loading students from database...</td></tr>`;
+  try{
+    const snap = await studentsRef.get();
+    students = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    document.getElementById("totalStudentsCount").textContent = students.length;
+    document.getElementById("dashStudents").textContent = students.length;
+    renderStudents();
+    fillReportAdmissionOptions();
+  }catch(err){
+    rowBox.innerHTML = `<tr><td colspan='6' style="color:red">Error: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+function renderStudents(){
+  const q = (document.getElementById("search").value || "").toLowerCase();
+  const list = students.filter(s =>
+    String(s.admissionNo || "").toLowerCase().includes(q) ||
+    String(s.name || "").toLowerCase().includes(q) ||
+    String(s.studentClass || "").toLowerCase().includes(q)
+  );
+  document.getElementById("studentRows").innerHTML = list.map(s => `
+    <tr>
+      <td>${esc(s.admissionNo)}</td><td>${esc(s.name)}</td>
+      <td>${esc(s.studentClass)}</td><td>${esc(s.division)}</td>
+      <td>${esc(s.phone)}</td>
+      <td>
+        <button onclick="viewStudent('${s.id}')">View</button>
+        <button onclick="editStudent('${s.id}')">Edit</button>
+        <button class="danger" onclick="removeStudent('${s.id}')">Delete</button>
+      </td>
+    </tr>`).join("") || "<tr><td colspan='6'>No students found.</td></tr>";
+}
+
+function editStudent(id){
+  const s = students.find(x => x.id === id); if(!s) return;
+  document.getElementById("editId").value = id;
+  const map = {admissionNo:"admissionNo", name:"studentName", gender:"gender", dob:"dob", studentClass:"studentClass", division:"division", admissionDate:"admissionDate", parentName:"parentName", phone:"phone", email:"email", religion:"religion", bloodGroup:"bloodGroup", address:"address"};
+  for(const [k,v] of Object.entries(map)) document.getElementById(v).value = s[k] || "";
+  photoData = s.photo || "";
+  if(photoData) document.getElementById("photoPreview").src = photoData;
+  document.getElementById("formTitle").textContent = "Edit Student";
+  showPage("admission");
+  window.scrollTo(0,0);
+}
+
+async function removeStudent(id){
+  if(!confirm("Delete this student permanently?")) return;
+  try{ await studentsRef.doc(id).delete(); await loadStudents(); refreshDashboardCounts(); }catch(err){ alert(err.message); }
+}
+
+function viewStudent(id){
+  const s = students.find(x => x.id === id); if(!s) return;
+  const photo = s.photo ? `<img class="profile-photo" src="${s.photo}" alt="Photo">` : `<div class="profile-photo" style="display:flex;align-items:center;justify-content:center">No Photo</div>`;
+  const item = (l,v) => `<div class="profile-item"><b>${l}</b>${esc(v || "-")}</div>`;
+  document.getElementById("profileContent").innerHTML = `
+    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">${photo}
+      <div style="flex:1"><h2 style="margin:0 0 6px">${esc(s.name)}</h2>${item("Admission No",s.admissionNo)}${item("Class",`${s.studentClass\vert{}\vert{}""} ${s.division||""}`)}</div>
+    </div>
+    <div class="profile-grid" style="margin-top:14px">
+      ${item("Gender",s.gender)}${item("Date of Birth",s.dob)}
+      ${item("Admission Date",s.admissionDate)}${item("Parent/Guardian",s.parentName)}
+      ${item("Mobile",s.phone)}${item("Email",s.email)}
+      ${item("Religion",s.religion)}${item("Blood Group",s.bloodGroup)}
+      ${item("Address",s.address)}
+    </div>
+    <div class="actions"><button onclick="editStudent('${s.id}');closeProfile()">✏️ Edit</button></div>`;
+  document.getElementById("profileModal").classList.add("show");
+}
+function closeProfile(){ document.getElementById("profileModal").classList.remove("show"); }
+
+function findMarkStudent(){
+  const adm = val("markAdmissionNo");
+  const s = students.find(x => String(x.admissionNo || "").toLowerCase() === adm.toLowerCase());
+  const status = document.getElementById("markStatus");
+  if(s){
+    document.getElementById("markStudentName").value = s.name || "";
+    document.getElementById("markClass").value = s.studentClass || "";
+    document.getElementById("markDivision").value = s.division || "";
+    status.textContent = "✅ Student found.";
+  } else {
+    document.getElementById("markStudentName").value = "";
+    status.textContent = "❌ Student not found.";
+  }
+}
+
+async function saveMark(){
+  const adm = val("markAdmissionNo"), subject = val("markSubject");
+  const max = Number(document.getElementById("maxMark").value), obtained = Number(document.getElementById("obtainedMark").value);
+  const s = students.find(x => String(x.admissionNo || "").toLowerCase() === adm.toLowerCase());
+  const status = document.getElementById("markStatus");
+  if(!s || !subject || !max || obtained < 0 || obtained > max){ status.textContent = "❌ Check fields and marks."; return; }
+  const data = {
+    academicYear: val("markYear"), exam: val("markExam"), admissionNo: s.admissionNo,
+    name: s.name, studentClass: s.studentClass || val("markClass"), division: s.division || val("markDivision"),
+    subject, maxMark: max, obtainedMark: obtained, percentage: Number((obtained/max*100).toFixed(2)),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try{
+    await marksRef.add(data);
+    status.textContent = "✅ Mark saved.";
+    clearMarkForm(false);
+    await loadMarks();
+    refreshDashboardCounts();
+  }catch(e){ status.textContent = "❌ " + e.message; }
+}
+
+function clearMarkForm(clearStatus = true){
+  document.getElementById("markAdmissionNo").value = "";
+  document.getElementById("markStudentName").value = "";
+  document.getElementById("markClass").value = "";
+  document.getElementById("markDivision").value = "";
+  document.getElementById("markSubject").value = "";
+  document.getElementById("maxMark").value = 100;
+  document.getElementById("obtainedMark").value = "";
+  if(clearStatus) document.getElementById("markStatus").textContent = "";
+}
+
+async function loadMarks(){
+  try{
+    const snap = await marksRef.get();
+    marks = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    document.getElementById("markRows").innerHTML = marks.map(m => `
+      <tr>
+        <td>${esc(m.name)}<br><small>${esc(m.admissionNo)}</small></td>
+        <td>${esc(m.exam)}</td><td>${esc(m.subject)}</td>
+        <td>${esc(m.obtainedMark)}/${esc(m.maxMark)}</td>
+        <td>${esc(m.percentage)}%</td>
+        <td><button class="danger" onclick="deleteMark('${m.id}')">Delete</button></td>
+      </tr>`).join("") || "<tr><td colspan='6'>No marks saved.</td></tr>";
+  }catch(e){ document.getElementById("markRows").innerHTML = `<tr><td colspan='6'>Error: ${esc(e.message)}</td></tr>`; }
+}
+
+async function deleteMark(id){
+  if(!confirm("Delete this mark?")) return;
+  try{ await marksRef.doc(id).delete(); await loadMarks(); refreshDashboardCounts(); }catch(e){ alert(e.message); }
+}
+
+function gradeFromPercentage(p){
+  p = Number(p);
+  if (p >= 90) return "A+";
+  if (p >= 80) return "A";
+  if (p >= 70) return "B+";
+  if (p >= 60) return "B";
+  if (p >= 50) return "C+";
+  if (p >= 40) return "C";
+  if (p >= 30) return "D";
+  return "E";
+}
+
+function fillReportAdmissionOptions(){
+  ["mlAdmissionNo", "prAdmissionNo"].forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Select Admission No</option>';
+    students.slice().sort((a,b) => String(a.admissionNo||"").localeCompare(String(b.admissionNo||""))).forEach(s => {
+      if(s.admissionNo){
+        const o = document.createElement("option");
+        o.value = s.admissionNo;
+        o.textContent = `${s.admissionNo} - ${s.name || ""}`;
+        sel.appendChild(o);
+      }
+    });
+    if(cur) sel.value = cur;
+  });
+}
+
+async function loadMarkList(){
+  const box = document.getElementById("markListResult");
+  box.innerHTML = "Loading...";
+  try{
+    const year = val("mlYear"), exam = val("mlExam").toLowerCase(), adm = val("mlAdmissionNo");
+    const snap = await marksRef.get();
+    const rows = snap.docs.map(d => d.data()).filter(m => 
+      (!year || String(m.academicYear||"") === year) &&
+      (!exam || String(m.exam||"").toLowerCase() === exam) &&
+      (!adm || String(m.admissionNo||"") === adm)
+    );
+    if(!rows.length){ box.innerHTML = "<p>No marks found.</p>"; return; }
+    let totalMax = 0, totalObt = 0;
+    let t = `<div class="report-head"><b>${esc(rows[0].name)}</b> (Adm: ${esc(rows[0].admissionNo)}) - ${esc(rows[0].studentClass)} ${esc(rows[0].division)}</div>`;
+    t += `<div class="table-wrap"><table><tr><th>Subject</th><th>Max</th><th>Obtained</th><th>%</th><th>Grade</th></tr>`;
+    rows.forEach(m => {
+      const mx = Number(m.maxMark)||0, ob = Number(m.obtainedMark)||0;
+      const p = mx ? (ob/mx*100) : 0;
+      totalMax += mx; totalObt += ob;
+      t += `<tr><td>${esc(m.subject)}</td><td>${mx}</td><td>${ob}</td><td>${p.toFixed(2)}</td><td>${gradeFromPercentage(p)}</td></tr>`;
+    });
+    const totalP = totalMax ? (totalObt/totalMax*100) : 0;
+    t += `<tr><th>Total</th><th>${totalMax}</th><th>${totalObt}</th><th>${totalP.toFixed(2)}</th><th>${gradeFromPercentage(totalP)}</th></tr></table></div>`;
+    box.innerHTML = t;
+  }catch(e){ box.innerHTML = `<p style="color:red">Error: ${esc(e.message)}</p>`; }
+}
+
+async function loadProgressReport(){
+  const box = document.getElementById("progressResult");
+  box.innerHTML = "Generating...";
+  try{
+    const year = val("prYear"), exam = val("prExam").toLowerCase(), adm = val("prAdmissionNo");
+    const snap = await marksRef.get();
+    const rows = snap.docs.map(d => d.data()).filter(m => 
+      (!year || String(m.academicYear||"") === year) &&
+      (!exam || String(m.exam||"").toLowerCase() === exam) &&
+      (!adm || String(m.admissionNo||"") === adm)
+    );
+    if(!rows.length){ box.innerHTML = "<p>No marks found.</p>"; return; }
+    const st = students.find(s => String(s.admissionNo||"") === adm) || {};
+    let totalMax = 0, totalObt = 0;
+    let subHtml = rows.map(m => {
+      const mx = Number(m.maxMark)||0, ob = Number(m.obtainedMark)||0;
+      const p = mx ? (ob/mx*100) : 0;
+      totalMax += mx; totalObt += ob;
+      return `<tr><td>${esc(m.subject)}</td><td>${mx}</td><td>${ob}</td><td>${p.toFixed(2)}</td><td>${gradeFromPercentage(p)}</td></tr>`;
+    }).join("");
+    const overall = totalMax ? (totalObt/totalMax*100) : 0;
+    box.innerHTML = `
+      <div id="printReport" class="progress-report">
+        <div class="school-title">SCHOOL PROGRESS REPORT</div>
+        ${st.photo ? `<img class="student-photo" src="${st.photo}">` : ""}
+        <h3>${esc(st.name || rows[0].name)}</h3>
+        <p><b>Admission No:</b> ${esc(adm)} | <b>Class:</b> ${esc(st.studentClass || rows[0].studentClass)}</p>
+        <p><b>Exam:</b> ${esc(rows[0].exam)} | <b>Year:</b> ${esc(rows[0].academicYear)}</p>
+        <div class="table-wrap"><table>
+          <tr><th>Subject</th><th>Max</th><th>Obtained</th><th>%</th><th>Grade</th></tr>
+          ${subHtml}
+          <tr><th>Total</th><th>${totalMax}</th><th>${totalObt}</th><th>${overall.toFixed(2)}</th><th>${gradeFromPercentage(overall)}</th></tr>
+        </table></div>
+        <p><b>Result:</b> ${overall >= 40 ? "PASS" : "NEEDS IMPROVEMENT"}</p>
+        <div class="signatures"><span>Class Teacher</span><span>Principal</span></div>
+      </div>
+      <div class="actions"><button onclick="printProgressReport()">Print / Save PDF</button></div>`;
+  }catch(e){ box.innerHTML = `<p style="color:red">Error: ${esc(e.message)}</p>`; }
+}
+
+function printProgressReport(){
+  const content = document.getElementById("printReport").innerHTML;
+  const w = window.open("", "_blank");
+  if(!w){ alert("Popup blocked."); return; }
+  w.document.write(`<html><head><title>Progress Report</title><style>body{font-family:Arial;padding:25px;color:#111}.school-title{text-align:center;font-size:24px;font-weight:bold;margin-bottom:18px}.student-photo{width:100px;height:120px;object-fit:cover;float:right;border:1px solid #999}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #333;padding:8px;text-align:center}th:first-child,td:first-child{text-align:left}.signatures{display:flex;justify-content:space-between;margin-top:70px}</style></head><body>${content}</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+async function saveClassDivision(){
+  const cls = val("className"), div = val("divisionName"), tch = val("classTeacher");
+  if(!cls || !div){ document.getElementById("classStatus").textContent = "❌ Enter Class & Division"; return; }
+  try{
+    await classesRef.add({className: cls, division: div, classTeacher: tch, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    document.getElementById("className").value = "";
+    document.getElementById("divisionName").value = "";
+    document.getElementById("classTeacher").value = "";
+    await loadClassDivisions();
+    refreshDashboardCounts();
+  }catch(e){ document.getElementById("classStatus").textContent = "❌ " + e.message; }
+}
+
+async function loadClassDivisions(){
+  try{
+    const snap = await classesRef.get();
+    document.getElementById("classRows").innerHTML = snap.docs.map(d => {
+      const x = d.data();
+      return `<tr><td>${esc(x.className)}</td><td>${esc(x.division)}</td><td>${esc(x.classTeacher||"")}</td><td><button class="danger" onclick="deleteClass('${d.id}')">Delete</button></td></tr>`;
+    }).join("") || "<tr><td colspan='4'>No classes added.</td></tr>";
+  }catch(e){}
+}
+
+async function deleteClass(id){
+  if(confirm("Delete class?")){ await classesRef.doc(id).delete(); await loadClassDivisions(); refreshDashboardCounts(); }
+}
+
+async function saveFeeStructure(){
+  const data = {
+    academicYear: val("feeYear"), className: val("feeClass"),
+    admissionFee: Number(val("admissionFee"))||0, tuitionFee: Number(val("tuitionFee"))||0,
+    termFee: Number(val("termFee"))||0, examFee: Number(val("examFee"))||0, otherFee: Number(val("otherFee"))||0,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(!data.className) return;
+  try{ await feeStructuresRef.add(data); await loadFeeStructures(); }catch(e){}
+}
+
+async function loadFeeStructures(){
+  try{
+    const snap = await feeStructuresRef.get();
+    document.getElementById("feeStructureRows").innerHTML = snap.docs.map(d => {
+      const x = d.data();
+      const tot = (x.admissionFee||0) + (x.tuitionFee||0) + (x.termFee||0) + (x.examFee||0) + (x.otherFee||0);
+      return `<tr><td>${esc(x.academicYear)}</td><td>${esc(x.className)}</td><td>${x.admissionFee}</td><td>${x.tuitionFee}</td><td>${x.termFee}</td><td>${x.examFee}</td><td>${x.otherFee}</td><td><b>${tot}</b></td><td><button class="danger" onclick="deleteFeeStr('${d.id}')">Delete</button></td></tr>`;
+    }).join("") || "<tr><td colspan='9'>No structure added.</td></tr>";
+  }catch(e){}
+}
+
+async function deleteFeeStr(id){
+  if(confirm("Delete fee structure?")){ await feeStructuresRef.doc(id).delete(); await loadFeeStructures(); }
+}
+
+function findCollectionStudent(){
+  const adm = val("collectionAdmissionNo");
+  const s = students.find(x => String(x.admissionNo||"").toLowerCase() === adm.toLowerCase());
+  if(s){
+    document.getElementById("collectionStudentName").value = s.name || "";
+    document.getElementById("collectionClass").value = `${s.studentClass||""} ${s.division||""}`;
+  }
+}
+
+async function saveFeeCollection(){
+  const adm = val("collectionAdmissionNo"), amt = Number(val("collectionAmount")) || 0;
+  const s = students.find(x => String(x.admissionNo||"").toLowerCase() === adm.toLowerCase());
+  if(!s || amt <= 0) return;
+  try{
+    await feeCollectionsRef.add({
+      academicYear: val("collectionYear"), admissionNo: s.admissionNo, name: s.name||"",
+      studentClass: s.studentClass||"", division: s.division||"",
+      feeType: val("collectionType"), amount: amt, paymentMode: val("paymentMode"),
+      receiptNo: val("receiptNo"), date: val("collectionDate") || todayISO(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById("collectionAmount").value = "";
+    await loadFeeCollections();
+    refreshDashboardCounts();
+  }catch(e){}
+}
+
+async function loadFeeCollections(){
+  try{
+    const snap = await feeCollectionsRef.get();
+    document.getElementById("feeCollectionRows").innerHTML = snap.docs.map(d => {
+      const x = d.data();
+      return `<tr><td>${esc(x.date)}</td><td>${esc(x.receiptNo||"")}</td><td>${esc(x.admissionNo)}</td><td>${esc(x.name)}</td><td>${esc(x.feeType)}</td><td>₹${Number(x.amount||0).toFixed(2)}</td><td>${esc(x.paymentMode)}</td></tr>`;
+    }).join("") || "<tr><td colspan='7'>No collections.</td></tr>";
+  }catch(e){}
+}
+
+async function loadTodayCollection(){
+  const date = todayISO();
+  try{
+    const snap = await feeCollectionsRef.get();
+    const rows = snap.docs.map(d => d.data()).filter(x => x.date === date);
+    let total = 0, cash = 0, digital = 0;
+    rows.forEach(x => {
+      const a = Number(x.amount)||0; total += a;
+      if(String(x.paymentMode).toLowerCase() === "cash") cash += a; else digital += a;
+    });
+    document.getElementById("todayTotal").textContent = "₹" + total.toFixed(2);
+    document.getElementById("todayReceipts").textContent = rows.length;
+    document.getElementById("todayCash").textContent = "₹" + cash.toFixed(2);
+    document.getElementById("todayDigital").textContent = "₹" + digital.toFixed(2);
+    document.getElementById("todayCollectionRows").innerHTML = rows.map(x => `
+      <tr><td>${esc(x.date)}</td><td>${esc(x.receiptNo||"")}</td><td>${esc(x.admissionNo)}</td><td>${esc(x.name)}</td><td>${esc(x.feeType)}</td><td>₹${Number(x.amount||0).toFixed(2)}</td><td>${esc(x.paymentMode)}</td></tr>
+    `).join("") || "<tr><td colspan='7'>No collection today.</td></tr>";
+  }catch(e){}
+}
+
+async function refreshDashboardCounts(){
+  if(!db) return;
+  try{
+    const [sSnap, mSnap, cSnap, fSnap] = await Promise.all([
+      studentsRef.get(), marksRef.get(), classesRef.get(), feeCollectionsRef.get()
+    ]);
+    document.getElementById("dashStudents").textContent = sSnap.size;
+    document.getElementById("dashMarks").textContent = mSnap.size;
+    document.getElementById("dashClasses").textContent = cSnap.size;
+    let total = 0;
+    const today = todayISO();
+    fSnap.forEach(d => { if(d.data().date === today) total += Number(d.data().amount) || 0; });
+    document.getElementById("dashTodayFees").textContent = "₹" + total.toFixed(0);
+  }catch(e){}
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadStudents();
+  loadMarks();
+  refreshDashboardCounts();
+});
+</script>
+</body>
+</html>
